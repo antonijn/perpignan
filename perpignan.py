@@ -588,7 +588,7 @@ class Perpignan:
                 rotation()
 
         elif type(act) == PlaceAction:
-            self.place(sheeples=act.sheeples, sheeple_slot=act.sheeple_slot)
+            self.place(act.sheeples, act.sheeple_slot)
 
         elif type(act) == RequestNextTileAction:
             self.active_player.inform(NextTileInfo(self.deck[-1], len(self.deck)))
@@ -611,25 +611,24 @@ class Perpignan:
     def inbounds(self, x, y):
         return x >= 0 and x < len(self.grid) and y >= 0 and y < len(self.grid)
 
-    def can_place(self, sheeple_slot=0, sheeples=0) -> bool:
-        can, ynot = self.can_place_and_ynot(sheeple_slot, sheeples)
+    def can_place(self, sheeples=0, sheeple_slot=0) -> bool:
+        can, ynot = self.can_place_and_ynot(sheeples, sheeple_slot)
         return can
 
-    def can_place_and_ynot(self, sheeple_slot=0, sheeples=0) -> (bool, str):
+    def can_place_and_ynot(self, sheeples=0, sheeple_slot=0) -> (bool, str):
         try:
-            self.place(sheeple_slot, sheeples, commit=False)
+            self.place(sheeples, sheeple_slot, commit=False)
         except CantPlaceThatThereError as e:
             return False, e.reason
         return True, None
 
-    def place(self, sheeple_slot=0, sheeples=0, commit=True):
+    def place(self, sheeples=0, sheeple_slot=0, commit=True):
         """
-        Place the current tile on the board.
+        Let the current player place the current tile on the board at
+        the cursor position.
 
-        :param Player player: The player who is doing the placing.
-        :param sheeple_slot: At which slot to place a sheeple.
-        :type sheeple_slot: integer or None
         :param int sheeples: How many sheeples to place.
+        :param int sheeple_slot: At which slot to place a sheeple.
         :param bool commit: Whether to actually perform the placement,
                             or just do a try run.
         :raises ValueError: if sheeple_slot is not in the range 0-12,

@@ -5,9 +5,9 @@ import sys
 class CommandLinePlayer(p.Player):
     helpstr = (
         'c X Y       Place cursor at X Y\n'
-        'p? [S M]    Can I place a tile at the current cursor position? And\n'
+        'p? [M S]    Can I place a tile at the current cursor position? And\n'
         '            possibly add M sheeples at site S?\n'
-        'p [S M]     Place a tile at the current cursor position. And possibly\n'
+        'p [M S]     Place a tile at the current cursor position. And possibly\n'
         '            add M sheeples at site S. Use site 12 for mill. Using\n'
         '            M=2 adds a regular sheeple; M=3 adds an abbot.\n'
         'r [C]       Rotate tile 90 degrees clockwise C times.\n'
@@ -39,14 +39,13 @@ class CommandLinePlayer(p.Player):
             elif cmd_parts[0] == 'c':
                 x, y = (int(cmd_parts[1]), int(cmd_parts[2]))
                 return p.SetCursorAction(x, y)
-            elif cmd_parts[0] == 'p?':
-                sheeple_slot = 0 if len(cmd_parts) < 2 else int(cmd_parts[1])
-                sheeples = 0 if len(cmd_parts) < 3 else int(cmd_parts[2])
-                return p.CanPlaceAction(sheeples, sheeple_slot)
-            elif cmd_parts[0] == 'p':
-                sheeple_slot = 0 if len(cmd_parts) < 2 else int(cmd_parts[1])
-                sheeples = 0 if len(cmd_parts) < 3 else int(cmd_parts[2])
-                return p.PlaceAction(sheeples, sheeple_slot)
+            elif cmd_parts[0] in ('p', 'p?'):
+                sheeples = 0 if len(cmd_parts) < 2 else int(cmd_parts[1])
+                sheeple_slot = 0 if len(cmd_parts) < 3 else int(cmd_parts[2])
+                if '?' in cmd_parts[0]:
+                    return p.CanPlaceAction(sheeples, sheeple_slot)
+                else:
+                    return p.PlaceAction(sheeples, sheeple_slot)
             elif cmd_parts[0] == 'x':
                 if input('Are you sure you want to quit? [y/n]: ') == 'y':
                     exit() # FIXME
