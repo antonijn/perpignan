@@ -75,14 +75,12 @@ def print_perpignan():
     vp_top = clamp(cur_y + 4)
     vp_bottom = clamp(cur_y - 3)
 
-    boxtop = ('┼' + '─' * 5) * (vp_right - vp_left) + '┼'
+    boxtop = '   ' + ('┼' + '─' * 5) * (vp_right - vp_left) + '┼'
     for y in range(vp_top - 1, vp_bottom - 1, -1):
-        for i in range(-1, 5):
+        print(boxtop)
+        for i in range(5):
             middle = (i == 2)
             sys.stdout.write(f' {y:2}' if middle else '   ')
-            if i == -1:
-                print(boxtop)
-                continue
 
             for x in range(vp_left, vp_right):
                 sys.stdout.write('│')
@@ -94,7 +92,7 @@ def print_perpignan():
                 else:
                     perp.grid[x][y].print_line(i)
             print('│')
-    print('   ' + boxtop)
+    print(boxtop)
 
     sys.stdout.write('   ')
     for x in range(vp_left, vp_right):
