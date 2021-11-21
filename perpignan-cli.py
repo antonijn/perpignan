@@ -102,7 +102,7 @@ def print_perpignan():
     print()
 
     if len(perp.deck) > 0:
-        print(f'Next tile (numbers are sites):')
+        print(f'Next tile:')
         print('\t ┌──012──┐')
         for line in range(5):
             sys.stdout.write('\t')
