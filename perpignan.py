@@ -273,11 +273,11 @@ class Tile:
 
     def print_line(self, line):
         which_slots = {
-            0: [-1,  0,  1,  2, -1],
-            1: [11, -1,  1, -1,  3],
-            2: [10, 10, 12,  4,  4],
-            3: [ 9, -1,  7, -1,  5],
-            4: [-1,  8,  7,  6, -1],
+            0: [-1,       0,  1,      2, -1],
+            1: [11, (11, 0),  1, (2, 3),  3],
+            2: [10,      10, 12,      4,  4],
+            3: [ 9,  (8, 9),  7, (5, 6),  5],
+            4: [-1,       8,  7,      6, -1],
         }
         symbols = { Town: 'o', Road: '+', Meadow: '.', type(None): 'w', Mill: '$' }
 
@@ -285,11 +285,18 @@ class Tile:
             return
 
         for i in which_slots[line]:
-            if i == -1:
-                sys.stdout.write(' ')
-                continue
+            if isinstance(i, tuple):
+                j, k = i
+                if self.slots[j].feature is self.slots[k].feature:
+                    sym = symbols[type(self.slots[j].feature)]
+                else:
+                    sym = '.'
+            elif i == -1 or (i == 12 and not isinstance(self.slots[12].feature, Mill)):
+                sym = ' '
+            else:
+                sym = symbols[type(self.slots[i].feature)]
 
-            sys.stdout.write(symbols[type(self.slots[i].feature)])
+            sys.stdout.write(sym)
 
     def print(self):
         for i in range(5):
