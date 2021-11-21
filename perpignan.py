@@ -347,18 +347,17 @@ class Tile:
         tile = Tile()
 
         pixels = [
-            (1, 0), (2, 0), (3, 0),
-            (4, 1), (4, 2), (4, 3),
-            (3, 4), (2, 4), (1, 4),
-            (0, 3), (0, 2), (0, 1),
+            (2, 0), (3, 0), (4, 0),
+            (6, 2), (6, 3), (6, 4),
+            (4, 6), (3, 6), (2, 6),
+            (0, 4), (0, 3), (0, 2),
         ]
 
         constructors = {
             (255,   0,   0): lambda : Road(),
             (  0, 255,   0): lambda : Meadow(),
-            (255,  32,   0): lambda : Meadow(), # Hacky shit for tile 24
             (  0,   0, 255): lambda : Town(),
-            ( 16,  16, 255): lambda : Town(flags=1),
+            (127, 127, 255): lambda : Town(flags=1),
         }
 
         visited = {}
@@ -380,19 +379,11 @@ class Tile:
                 if j in visited:
                     continue
 
-                # custom permissive threshold, to allow for one pixel
-                # difference on tile 24 (hacky shit), and for the lighter
-                # blue of towns with flags
-                def cmp(pix_a, pix_b):
-                    a, b, c = pix_a
-                    x, y, z = pix_b
-                    return (abs(a - x) + abs(b - y) + abs(c - z)) <= 32
-
-                if pixels_connected(image, pixels[i], pixels[j], cmp):
+                if pixels_connected(image, pixels[i], pixels[j]):
                     feat.plugin(tile.slots[j])
                     visited[j] = True
 
-        if image.getpixel((2, 2)) == (255, 255, 255):
+        if image.getpixel((3, 3)) == (255, 255, 255):
             feat = Mill()
             feat.plugin(tile.slots[12])
 
@@ -422,7 +413,7 @@ class Tile:
         return tile
 
     @staticmethod
-    def deck_from_bitmap(im, w=7, h=12, res=5):
+    def deck_from_bitmap(im, w=7, h=12, res=7):
         return [
             Tile.from_bitmap(im.crop((x * res, y * res, (x + 1) * res, (y + 1) * res)))
             for y in range(h) for x in range(w)

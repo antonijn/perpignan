@@ -132,6 +132,10 @@ while len(players) <= 8:
     else:
         players.append(CommandLinePlayer(perp, name))
 
+for tile in perp.deck:
+    print(tile)
+    print()
+
 perp.players = players
 perp.run()
 for player in players:
