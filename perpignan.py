@@ -663,6 +663,9 @@ class Perpignan:
             if sheeples == 2 and self.active_player.sheeples == 3:
                 raise CantPlaceThatThereError('only abbot left')
 
+        # to be populated with tuples (N, (dx, dy), L) where
+        # N is the neighbouring tile
+        # (dx, dy) is the relative offset of N to the current tile
         nxbours = []
         # where you can place a tile after this one has been placed
         becomes_available = []
@@ -674,11 +677,30 @@ class Perpignan:
 
             tile_b = self.grid[x_b][y_b]
 
-            if tile_b is None:
-                becomes_available.append((x_b, y_b))
+            if tile_b is not None:
+                nxbours.append((tile_b, (dx, dy)))
                 continue
 
-            nxbours.append((tile_b, (dx, dy)))
+            becomes_available.append((x_b, y_b))
+
+            # let's check if we're not smashing a river into a town
+
+            if tile.slots[Tile.slot_offsets[(dx, dy)]].feature is None:
+                continue
+
+            rots = [(-dy, dx), (dy, -dx)]
+            for (dx_rot, dy_rot) in rots:
+                x_c, y_c = (x_b + dx_rot, y_b + dy_rot)
+                if not self.inbounds(x_c, y_c):
+                    continue
+
+                tile_c = self.grid[x_c][y_c]
+                if tile_c is None:
+                    continue
+
+                danger_slot = Tile.slot_offsets[(-dx_rot, -dy_rot)] + 1
+                if isinstance(tile_c.slots[danger_slot].feature, Town):
+                    raise CantPlaceThatThereError('must not turn river into town')
 
         if len(nxbours) == 0:
             raise CantPlaceThatThereError('in void')
