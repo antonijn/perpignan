@@ -726,7 +726,7 @@ class Perpignan:
 
             # let's check if we're not smashing a river into a town
 
-            if tile.slots[Tile.slot_offsets[(dx, dy)]].feature is None:
+            if tile.slots[Tile.slot_offsets[(dx, dy)]].feature is not None:
                 continue
 
             rots = [(-dy, dx), (dy, -dx)]
