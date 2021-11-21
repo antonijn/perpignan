@@ -5,30 +5,48 @@ import random
 import sys
 
 class Slot:
+    """ A (potential) opportunity to place an object in a feature.
+    E.g. put a sheeple on a meadow, or sheeple in a town."""
     def __init__(self):
         self.feature = None
 
 class TileSlot(Slot):
+    """ A (potential) opportunity to place a tile in the game. """
     def __init__(self, tile):
         super().__init__()
         self.tile = tile
 
 class EdgeSlot(TileSlot):
+    """ A (potential) opportunity to add a tile to an edge of 
+    another tile."""
     def __init__(self, tile):
         super().__init__(tile)
         self.available = True
 
 class Feature:
+    """ A representation for items and objects in the game. For
+    example, a slot for a tile, a meadow, or sheeples."""
     def __init__(self):
         self.slots = []
         self.player_sheeples = {}
         self.completed = False
 
     def plugin(self, slot):
+        """
+        Adds a new slot, representing for example a tile, to the list of slots.
+        :param slot: The object that is being added to a list.
+
+        """
         slot.feature = self
         self.slots.append(slot)
 
     def absorb(self, other, perpignan):
+        """
+        Takes in a map of the game, into another map.
+        :param other: A map of the game that is being added.
+        :param perpignan: A map that is used to verify the absorbation went well.
+
+        """
         if self is other:
             return
 
@@ -50,6 +68,7 @@ class Feature:
             self.complete(perpignan)
 
     def tiles(self):
+        """ Returns a list of tiles that are unique."""
         unique_tiles = {}
         for slot in self.slots:
             if isinstance(slot, TileSlot):
@@ -58,9 +77,20 @@ class Feature:
         return (tile for tile in unique_tiles)
 
     def score(self, endgame=False):
+        """
+        Computes the score of the players at some game state.
+        :param endgame:  (Default value = False) Boolean indicating whether the game is completed or not.
+
+        """
         raise NotImplementedError()
 
     def complete(self, perpignan, endgame=False):
+        """
+
+        :param perpignan: 
+        :param endgame:  (Default value = False)
+
+        """
         if self.completed:
             return
 
@@ -80,9 +110,11 @@ class Feature:
         perpignan.log(CompletedInfo(self))
 
     def should_complete(self):
+        """ """
         return False
 
     def to_dict(self):
+        """ """
         perimeter = []
         for tile in self.tiles():
             tslots = [i for i in range(len(tile.slots)) if tile.slots[i].feature is self]
@@ -94,10 +126,16 @@ class Feature:
         }
 
 class Town(Feature):
+    """ """
     def __init__(self):
         super().__init__()
 
     def score(self, endgame=False):
+        """
+
+        :param endgame:  (Default value = False)
+
+        """
         tiles = {}
         for s in self.slots:
             if isinstance(s, EdgeSlot):
@@ -105,6 +143,7 @@ class Town(Feature):
         return len(tiles) * (1 if endgame else 2)
 
     def should_complete(self):
+        """ """
         for s in self.slots:
             if isinstance(s, EdgeSlot) and s.available:
                 return False
@@ -112,11 +151,17 @@ class Town(Feature):
         return True
 
 class Road(Feature):
+    """ """
     def __init__(self):
         super().__init__()
         self.completed = False
 
     def score(self, endgame=False):
+        """
+
+        :param endgame:  (Default value = False)
+
+        """
         tiles = {}
         for s in self.slots:
             if isinstance(s, EdgeSlot):
@@ -124,6 +169,7 @@ class Road(Feature):
         return len(tiles)
 
     def should_complete(self):
+        """ """
         for s in self.slots:
             if isinstance(s, EdgeSlot) and s.available:
                 return False
@@ -131,11 +177,17 @@ class Road(Feature):
         return True
 
 class Meadow(Feature):
+    """ """
     def __init__(self):
         super().__init__()
         self.town_slots = []
 
     def score(self, endgame=False):
+        """
+
+        :param endgame:  (Default value = False)
+
+        """
         towns = {}
         for s in self.town_slots:
             if s.feature.completed:
@@ -143,6 +195,12 @@ class Meadow(Feature):
         return len(towns) * 3
 
     def absorb(self, other, perpignan):
+        """
+
+        :param other: 
+        :param perpignan: 
+
+        """
         super().absorb(other, perpignan)
         if self is other:
             return
@@ -151,25 +209,51 @@ class Meadow(Feature):
         other.town_slots = []
 
 class Mill(Feature):
+    """ """
     def __init__(self):
         super().__init__()
 
     def should_complete(self):
+        """ """
         return self.slots[0].tile.neighbours == 8
 
     def score(self, endgame=False):
+        """
+
+        :param endgame:  (Default value = False)
+
+        """
         return self.slots[0].tile.neighbours + 1
 
 def pixels_equal(pix1, pix2):
+    """
+
+    :param pix1: 
+    :param pix2: 
+
+    """
     return pix1 == pix2
 
 def pixels_connected(image, pos_a, pos_b, compare=pixels_equal):
+    """
+
+    :param image: 
+    :param pos_a: 
+    :param pos_b: 
+    :param compare:  (Default value = pixels_equal)
+
+    """
     # -1 unsearched, 0 not connected, 1 connected
     imwidth, imheight = image.size
     state = [[-1] * imwidth for _ in range(imheight)]
     pix_a = image.getpixel(pos_a)
 
     def depth_first(pos):
+        """
+
+        :param pos: 
+
+        """
         if pos == pos_b:
             return True
 
@@ -200,6 +284,7 @@ def pixels_connected(image, pos_a, pos_b, compare=pixels_equal):
 
 
 class Tile:
+    """ """
     slot_offsets = {
         ( 0,  1): 0,
         ( 1,  0): 3,
@@ -216,21 +301,30 @@ class Tile:
         self.neighbours = 0
 
     def add_neighbours(self, nx, perpignan):
+        """
+
+        :param nx: 
+        :param perpignan: 
+
+        """
         self.neighbours += nx
         if self.neighbours == 8 and isinstance(self.slots[12].feature, Mill):
             self.slots[12].feature.complete(perpignan)
 
     def rotate_cw(self):
+        """ """
         mill_slot = self.slots[12]
         self.slots = [self.slots[(i + 9) % 12] for i in range(3 * 4)]
         self.slots.append(mill_slot)
 
     def rotate_ccw(self):
+        """ """
         mill_slot = self.slots[12]
         self.slots = [self.slots[(i + 3) % 12] for i in range(3 * 4)]
         self.slots.append(mill_slot)
 
     def features(self):
+        """ """
         feats = {}
         for s in self.slots:
             if s.feature is not None:
@@ -255,6 +349,7 @@ class Tile:
         return featstr + '\n'
 
     def to_dict(self):
+        """ """
         feat_slots = {}
         for i in range(len(self.slots)):
             slot = self.slots[i]
@@ -272,6 +367,11 @@ class Tile:
         return {'type': 'Tile', 'features': feats}
 
     def print_line(self, line):
+        """
+
+        :param line: 
+
+        """
         which_slots = {
             0: [-1,  0,  1,  2, -1],
             1: [11, -1,  1, -1,  3],
@@ -292,12 +392,18 @@ class Tile:
             sys.stdout.write(symbols[type(self.slots[i].feature)])
 
     def print(self):
+        """ """
         for i in range(5):
             self.print_line(i)
             print()
 
     @staticmethod
     def from_bitmap(image):
+        """
+
+        :param image: 
+
+        """
         tile = Tile()
 
         pixels = [
@@ -336,6 +442,12 @@ class Tile:
                 # Hacky shit again, allow for one pixel difference for
                 # tile 24
                 def cmp(pix_a, pix_b):
+                    """
+
+                    :param pix_a: 
+                    :param pix_b: 
+
+                    """
                     a, b, c = pix_a
                     x, y, z = pix_b
                     return (abs(a - x) + abs(b - y) + abs(c - z)) <= 1
@@ -360,6 +472,12 @@ class Tile:
 
         gb = [(0, 255, 0), (0, 0, 255)]
         def green_or_blue(pix_a, pix_b):
+            """
+
+            :param pix_a: 
+            :param pix_b: 
+
+            """
             return pix_a in gb and pix_b in gb
 
         for m, t in meadow_towns:
@@ -375,31 +493,44 @@ class Tile:
 
     @staticmethod
     def deck_from_bitmap(im, w=7, h=12, res=5):
+        """
+
+        :param im: 
+        :param w:  (Default value = 7)
+        :param h:  (Default value = 12)
+        :param res:  (Default value = 5)
+
+        """
         return [
             Tile.from_bitmap(im.crop((x * res, y * res, (x + 1) * res, (y + 1) * res)))
             for y in range(h) for x in range(w)
         ]
 
 class CantPlaceThatThereError(Exception):
+    """ """
     def __init__(self, reason):
         super().__init__(reason)
         self.reason = reason
 
 class PlayerAction:
+    """ """
     pass
 
 class SetCursorAction(PlayerAction):
+    """ """
     def __init__(self, x: int, y: int):
         self.x = x
         self.y = y
 
 class RotateAction(PlayerAction):
+    """ """
     def __init__(self, turns: int):
         if abs(turns) >= 4:
             raise ValueError('too many turns')
         self.turns = turns
 
 class CanPlaceAction(PlayerAction):
+    """ """
     def __init__(self, sheeples: int, sheeple_slot: int):
         if sheeples not in (0, 2, 3):
             raise ValueError('invalid number of sheeples')
@@ -410,34 +541,43 @@ class CanPlaceAction(PlayerAction):
         self.sheeple_slot = sheeple_slot
 
 class PlaceAction(CanPlaceAction):
+    """ """
     def __init__(self, sheeples: int, sheeple_slot: int):
         super().__init__(sheeples, sheeple_slot)
 
 class PlayerQuitAction(PlayerAction):
+    """ """
     pass
 
 class RequestNextTileAction(PlayerAction):
+    """ """
     pass
 
 class StateChangeInfo:
+    """ """
     def to_dict(self):
+        """ """
         raise NotImplementedError()
 
 class NextTurnInfo(StateChangeInfo):
+    """ """
     def __init__(self, player):
         self.player = player
 
     def to_dict(self):
+        """ """
         return {
             'type': type(self).__name__,
             'player': self.player.name
         }
 
 class PlayerScoreInfo(StateChangeInfo):
+    """ """
     def __init__(self, player):
         self.player = player
 
     def to_dict(self):
+        """ """
         return {
             'type': type(self).__name__,
             'player': self.player.name,
@@ -445,10 +585,12 @@ class PlayerScoreInfo(StateChangeInfo):
         }
 
 class PlayerSheepleInfo(StateChangeInfo):
+    """ """
     def __init__(self, player):
         self.player = player
 
     def to_dict(self):
+        """ """
         return {
             'type': type(self).__name__,
             'player': self.player.name,
@@ -456,22 +598,26 @@ class PlayerSheepleInfo(StateChangeInfo):
         }
 
 class PlayerQuitInfo(StateChangeInfo):
+    """ """
     def __init__(self, player):
         self.player = player
 
     def to_dict(self):
+        """ """
         return {
             'type': type(self).__name__,
             'player': self.player.name
         }
 
 class TilePlaceInfo(StateChangeInfo):
+    """ """
     def __init__(self, tile, sheeples: int, sheeple_slot: int):
         self.tile = tile
         self.sheeples = sheeples
         self.sheeple_slot = sheeple_slot
 
     def to_dict(self):
+        """ """
         d = {
             'type': type(self).__name__,
             'tile': self.tile.to_dict(),
@@ -484,34 +630,41 @@ class TilePlaceInfo(StateChangeInfo):
         return d
 
 class CompletedInfo(StateChangeInfo):
+    """ """
     def __init__(self, feature):
         self.feature = feature
 
     def to_dict(self):
+        """ """
         return {
             'type': type(self).__name__,
             'feature': self.feature.to_dict()
         }
 
 class UserErrorInfo(StateChangeInfo):
+    """ """
     def __init__(self, msg):
         self.msg = msg
 
     def to_dict(self):
+        """ """
         return {
             'type': type(self).__name__,
             'msg': msg
         }
 
 class ResponseInfo(StateChangeInfo):
+    """ """
     pass
 
 class CanPlaceInfo(ResponseInfo):
+    """ """
     def __init__(self, can_place: bool, ynot: str):
         self.can_place = can_place
         self.ynot = ynot
 
     def to_dict(self):
+        """ """
         return {
             'type': type(self).__name__,
             'can_place': self.can_place,
@@ -519,11 +672,13 @@ class CanPlaceInfo(ResponseInfo):
         }
 
 class NextTileInfo(ResponseInfo):
+    """ """
     def __init__(self, tile, deck_size: int):
         self.tile = tile
         self.deck_size = deck_size
 
     def to_dict(self):
+        """ """
         return {
             'type': type(self).__name__,
             'tile': self.tile.to_dict(),
@@ -531,6 +686,7 @@ class NextTileInfo(ResponseInfo):
         }
 
 class Perpignan:
+    """ """
     def __init__(self):
         self.grid = [[None for y in range(7 * 12)] for x in range(7 * 12)]
 
@@ -553,6 +709,7 @@ class Perpignan:
         self.active_player_idx = -1
 
     def run(self):
+        """ """
         if len(self.players) == 0:
             return
 
@@ -571,6 +728,11 @@ class Perpignan:
         self.end_game()
 
     def handle_action(self, act):
+        """
+
+        :param act: 
+
+        """
         if type(act) == SetCursorAction:
             self.cursor = (act.x, act.y)
 
@@ -594,21 +756,46 @@ class Perpignan:
             del self.players[self.active_player_idx]
 
     def next_player(self):
+        """ """
         self.active_player_idx = (self.active_player_idx + 1) % len(self.players)
         self.active_player = self.players[self.active_player_idx]
 
     def log(self, msg):
+        """
+
+        :param msg: 
+
+        """
         for p in self.players:
             p.inform(msg)
 
     def inbounds(self, x, y):
+        """
+
+        :param x: 
+        :param y: 
+
+        """
         return x >= 0 and x < len(self.grid) and y >= 0 and y < len(self.grid)
 
     def can_place(self, sheeple_slot=0, sheeples=0) -> bool:
+        """
+
+        :param sheeple_slot:  (Default value = 0)
+        :param sheeples:  (Default value = 0)
+
+        """
         can, ynot = self.can_place_and_ynot(sheeple_slot, sheeples)
         return can
 
     def can_place_and_ynot(self, sheeple_slot=0, sheeples=0) -> (bool, str):
+        """
+
+        :param sheeple_slot:  (Default value = 0)
+        :param sheeples:  (Default value = 0) -> (bool)
+        :param str: 
+
+        """
         try:
             self.place(sheeple_slot, sheeples, commit=False)
         except CantPlaceThatThereError as e:
@@ -616,18 +803,20 @@ class Perpignan:
         return True, None
 
     def place(self, sheeple_slot=0, sheeples=0, commit=True):
-        """
-        Place the current tile on the board.
+        """Place the current tile on the board.
 
-        :param Player player: The player who is doing the placing.
-        :param sheeple_slot: At which slot to place a sheeple.
+        :param Player: player: The player who is doing the placing.
+        :param sheeple_slot: At which slot to place a sheeple. (Default value = 0)
         :type sheeple_slot: integer or None
-        :param int sheeples: How many sheeples to place.
-        :param bool commit: Whether to actually perform the placement,
+        :param int: sheeples: How many sheeples to place.
+        :param bool: commit: Whether to actually perform the placement,
                             or just do a try run.
+        :param sheeples:  (Default value = 0)
+        :param commit:  (Default value = True)
         :raises ValueError: if sheeple_slot is not in the range 0-12,
                             or sheeples is not in the range 0,2-3.
         :raises CantPlaceThatThereError: if placement violates the rules.
+
         """
         if len(self.deck) == 0:
             raise CantPlaceThatThereError('no tiles')
@@ -764,6 +953,7 @@ class Perpignan:
             self.deck = deck
 
     def new_tile_fits_anywhere(self):
+        """ """
         if len(self.deck) == 0:
             return False
 
@@ -786,6 +976,7 @@ class Perpignan:
             self.cursor = cur
 
     def end_game(self):
+        """ """
         features = (
             s.feature
             for tiles in self.grid
@@ -803,13 +994,20 @@ class Perpignan:
             feat.complete(self, endgame=True)
 
 class Player:
+    """ """
     def __init__(self, name):
         self.score = 0
         self.sheeples = 19
         self.name = name
 
     def poll_action(self):
+        """ """
         raise NotImplementedError()
 
     def inform(self, msg):
+        """
+
+        :param msg: 
+
+        """
         raise NotImplementedError()
