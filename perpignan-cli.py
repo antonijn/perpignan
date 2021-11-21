@@ -6,9 +6,9 @@ class CommandLinePlayer(p.Player):
     helpstr = (
         'c X Y       Place cursor at X Y\n'
         'p? [M S]    Can I place a tile at the current cursor position? And\n'
-        '            possibly add M sheeples at site S?\n'
+        '            possibly add M sheeples at slot S?\n'
         'p [M S]     Place a tile at the current cursor position. And possibly\n'
-        '            add M sheeples at site S. Use site 12 for mill. Using\n'
+        '            add M sheeples at slot S. Use slot 12 for mill. Using\n'
         '            M=2 adds a regular sheeple; M=3 adds an abbot.\n'
         'r [C]       Rotate tile 90 degrees clockwise C times.\n'
         's           Show game state.\n'
