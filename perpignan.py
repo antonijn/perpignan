@@ -314,10 +314,10 @@ class Tile:
             (  0,   0, 255): lambda : Town(),
         }
 
-        vislotd = {}
+        visited = {}
         features = []
         for i in range(12):
-            if i in vislotd:
+            if i in visited:
                 continue
 
             pix = image.getpixel(pixels[i])
@@ -330,7 +330,7 @@ class Tile:
             features.append(feat)
 
             for j in range(i + 1, 12):
-                if j in vislotd:
+                if j in visited:
                     continue
 
                 # Hacky shit again, allow for one pixel difference for
@@ -342,7 +342,7 @@ class Tile:
 
                 if pixels_connected(image, pixels[i], pixels[j], cmp):
                     feat.plugin(tile.slots[j])
-                    vislotd[j] = True
+                    visited[j] = True
 
         if image.getpixel((2, 2)) == (255, 255, 255):
             feat = Mill()
