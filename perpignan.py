@@ -82,6 +82,12 @@ class Feature:
     def should_complete(self):
         return False
 
+    def symbol(self):
+        raise NotImplementedError()
+
+    def name(self):
+        return type(self).__name__
+
     def to_dict(self):
         perimeter = []
         for tile in self.tiles():
@@ -94,15 +100,16 @@ class Feature:
         }
 
 class Town(Feature):
-    def __init__(self):
+    def __init__(self, flags=0):
         super().__init__()
+        self.flags = flags
 
     def score(self, endgame=False):
         tiles = {}
         for s in self.slots:
             if isinstance(s, EdgeSlot):
                 tiles[s.tile] = True
-        return len(tiles) * (1 if endgame else 2)
+        return (len(tiles) + self.flags) * (1 if endgame else 2)
 
     def should_complete(self):
         for s in self.slots:
@@ -110,6 +117,28 @@ class Town(Feature):
                 return False
 
         return True
+
+    def absorb(self, other, perpignan):
+        super().absorb(other, perpignan)
+        if self is other:
+            return
+
+        self.flags += other.flags
+        other.flags = 0
+
+    def symbol(self):
+        return f'{self.flags:x}'
+
+    def name(self):
+        base_name = super().name()
+        if self.flags > 0:
+            return base_name + f'({self.flags})'
+        return base_name
+
+    def to_dict(self):
+        d = super().to_dict()
+        d['flags'] = self.flags
+        return d
 
 class Road(Feature):
     def __init__(self):
@@ -129,6 +158,9 @@ class Road(Feature):
                 return False
 
         return True
+
+    def symbol(self):
+        return '+'
 
 class Meadow(Feature):
     def __init__(self):
@@ -150,6 +182,9 @@ class Meadow(Feature):
         self.town_slots.extend(other.town_slots)
         other.town_slots = []
 
+    def symbol(self):
+        return '.'
+
 class Mill(Feature):
     def __init__(self):
         super().__init__()
@@ -159,6 +194,9 @@ class Mill(Feature):
 
     def score(self, endgame=False):
         return self.slots[0].tile.neighbours + 1
+
+    def symbol(self):
+        return '$'
 
 def pixels_equal(pix1, pix2):
     return pix1 == pix2
@@ -249,7 +287,7 @@ class Tile:
             feat_slots[feat].append(i)
                 
         featstr = '\n'.join(
-            f'\t{type(feat).__name__} {feat_slots[feat]}'
+            f'\t{feat.name()} {feat_slots[feat]}'
             for feat in feat_slots
         )
         return featstr + '\n'
@@ -279,7 +317,6 @@ class Tile:
             3: [ 9,  (8, 9),  7, (5, 6),  5],
             4: [-1,       8,  7,      6, -1],
         }
-        symbols = { Town: 'o', Road: '+', Meadow: '.', type(None): 'w', Mill: '$' }
 
         if line not in which_slots:
             return
@@ -288,13 +325,15 @@ class Tile:
             if isinstance(i, tuple):
                 j, k = i
                 if self.slots[j].feature is self.slots[k].feature:
-                    sym = symbols[type(self.slots[j].feature)]
+                    sym = self.slots[j].feature.symbol()
                 else:
                     sym = '.'
             elif i == -1 or (i == 12 and not isinstance(self.slots[12].feature, Mill)):
                 sym = ' '
+            elif self.slots[i].feature is None:
+                sym = 'w'
             else:
-                sym = symbols[type(self.slots[i].feature)]
+                sym = self.slots[i].feature.symbol()
 
             sys.stdout.write(sym)
 
@@ -317,8 +356,9 @@ class Tile:
         constructors = {
             (255,   0,   0): lambda : Road(),
             (  0, 255,   0): lambda : Meadow(),
-            (255,   1,   0): lambda : Meadow(), # Hacky shit for tile 24
+            (255,  32,   0): lambda : Meadow(), # Hacky shit for tile 24
             (  0,   0, 255): lambda : Town(),
+            ( 16,  16, 255): lambda : Town(flags=1),
         }
 
         visited = {}
@@ -340,12 +380,13 @@ class Tile:
                 if j in visited:
                     continue
 
-                # Hacky shit again, allow for one pixel difference for
-                # tile 24
+                # custom permissive threshold, to allow for one pixel
+                # difference on tile 24 (hacky shit), and for the lighter
+                # blue of towns with flags
                 def cmp(pix_a, pix_b):
                     a, b, c = pix_a
                     x, y, z = pix_b
-                    return (abs(a - x) + abs(b - y) + abs(c - z)) <= 1
+                    return (abs(a - x) + abs(b - y) + abs(c - z)) <= 32
 
                 if pixels_connected(image, pixels[i], pixels[j], cmp):
                     feat.plugin(tile.slots[j])
