@@ -3,16 +3,18 @@ import perpignan as p
 import sys
 
 class CommandLinePlayer(p.Player):
-    helpstr = '''c X Y       Place cursor at X Y
-p? [S M]    Can I place a tile at the current cursor position? And
-            possibly add M sheeples at site S?
-p [S M]     Place a tile at the current cursor position. And possibly
-            add M sheeples at site S. Use site 12 for mill. Using
-            M=2 adds a regular sheeple; M=3 adds an abbot.
-r [C]       Rotate tile 90 degrees clockwise C times.
-s           Show game state.
-t           Show next tile data.
-x           Terminate game.'''
+    helpstr = (
+        'c X Y       Place cursor at X Y\n'
+        'p? [S M]    Can I place a tile at the current cursor position? And\n'
+        '            possibly add M sheeples at site S?\n'
+        'p [S M]     Place a tile at the current cursor position. And possibly\n'
+        '            add M sheeples at site S. Use site 12 for mill. Using\n'
+        '            M=2 adds a regular sheeple; M=3 adds an abbot.\n'
+        'r [C]       Rotate tile 90 degrees clockwise C times.\n'
+        's           Show game state.\n'
+        't           Show next tile data.\n'
+        'x           Terminate game.\n'
+    )
 
     def __init__(self, perpignan, name):
         super().__init__(name)

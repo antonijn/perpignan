@@ -66,7 +66,7 @@ class Feature:
 
         score = self.score(endgame=endgame)
         most_sheeples = max(self.player_sheeples.values(), default=-1)
-        
+
         self.completed = True
 
         for p in self.player_sheeples:
@@ -174,7 +174,7 @@ def pixels_connected(image, pos_a, pos_b, compare=pixels_equal):
             return True
 
         poss_nxbours = [
-            (pos[0] - 1, pos[1] + 0),
+            (pos[0] - 1, pos[1]),
             (pos[0] + 1, pos[1]),
             (pos[0], pos[1] - 1),
             (pos[0], pos[1] + 1),
