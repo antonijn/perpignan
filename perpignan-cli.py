@@ -100,7 +100,7 @@ def print_perpignan():
     print()
 
     if len(perp.deck) > 0:
-        print(f'Next tile:')
+        print('Next tile:')
         print('\t ┌──012──┐')
         for line in range(5):
             sys.stdout.write('\t')
@@ -131,10 +131,6 @@ while len(players) <= 8:
         print('no; space not allowed in name')
     else:
         players.append(CommandLinePlayer(perp, name))
-
-for tile in perp.deck:
-    print(tile)
-    print()
 
 perp.players = players
 perp.run()
