@@ -16,12 +16,10 @@ class CommandLinePlayer(p.Player):
         'x           Terminate game.\n'
     )
 
-    def __init__(self, perpignan, name):
+    def __init__(self, name):
         super().__init__(name)
 
     def poll_action(self):
-        global perp
-
         cmd = input(f'{repr(self.name)} ({self.score}p {self.sheeples}sh)> ')
         cmd_parts = cmd.split()
         if len(cmd_parts) == 0:
@@ -64,12 +62,12 @@ class CommandLinePlayer(p.Player):
             print(f'{msg.deck_size} cards left; next:\n{msg.tile}')
 
 def print_perpignan():
-    global perp
+    grid = perp.board.grid
     cur_x, cur_y = perp.cursor
 
     # calculate viewport
     def clamp(x):
-        return min(max(0, x), len(perp.grid))
+        return min(max(0, x), len(grid))
     vp_left = clamp(cur_x - 4)
     vp_right = clamp(cur_x + 5)
     vp_top = clamp(cur_y + 4)
@@ -84,13 +82,13 @@ def print_perpignan():
 
             for x in range(vp_left, vp_right):
                 sys.stdout.write('│')
-                if perp.grid[x][y] is None:
+                if grid[x][y] is None:
                     if middle and x == cur_x and y == cur_y:
                         sys.stdout.write('  X  ')
                     else:
                         sys.stdout.write('     ')
                 else:
-                    perp.grid[x][y].print_line(i)
+                    grid[x][y].print_line(i)
             print('│')
     print(boxtop)
 
@@ -114,7 +112,7 @@ def print_perpignan():
         print('Game over.')
 
 
-perp = p.Perpignan()
+perp = p.PerpignanGame()
 
 players = []
 while len(players) <= 8:
@@ -122,7 +120,7 @@ while len(players) <= 8:
     name = name.strip()
     if name == '':
         if len(players) == 0:
-            players.append(CommandLinePlayer(perp, 'player1'))
+            players.append(CommandLinePlayer('player1'))
         break
 
     if name in (p.name for p in players):
@@ -130,7 +128,7 @@ while len(players) <= 8:
     if ' ' in name:
         print('no; space not allowed in name')
     else:
-        players.append(CommandLinePlayer(perp, name))
+        players.append(CommandLinePlayer(name))
 
 perp.players = players
 perp.run()

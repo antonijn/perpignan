@@ -3,6 +3,19 @@ import json
 import os.path
 import random
 import sys
+import typing
+
+class Player:
+    def __init__(self, name):
+        self.score = 0
+        self.sheeples = 19
+        self.name = name
+
+    def poll_action(self) -> 'PlayerAction':
+        raise NotImplementedError()
+
+    def inform(self, msg: 'StateChangeInfo'):
+        raise NotImplementedError()
 
 class Slot:
     def __init__(self):
@@ -24,11 +37,11 @@ class Feature:
         self.player_sheeples = {}
         self.completed = False
 
-    def plugin(self, slot):
+    def plugin(self, slot: Slot):
         slot.feature = self
         self.slots.append(slot)
 
-    def absorb(self, other, perpignan):
+    def absorb(self, other: 'Feature', log=lambda msg: None):
         if self is other:
             return
 
@@ -47,7 +60,7 @@ class Feature:
         other.player_sheeples = {}
 
         if self.should_complete():
-            self.complete(perpignan)
+            self.complete(log=log)
 
     def tiles(self):
         unique_tiles = {}
@@ -57,10 +70,10 @@ class Feature:
 
         return (tile for tile in unique_tiles)
 
-    def score(self, endgame=False):
+    def score(self, endgame: bool = False):
         raise NotImplementedError()
 
-    def complete(self, perpignan, endgame=False):
+    def complete(self, log=lambda msg: None, endgame: bool = False):
         if self.completed:
             return
 
@@ -72,20 +85,20 @@ class Feature:
         for p in self.player_sheeples:
             sheeples = self.player_sheeples[p]
             p.sheeples += sheeples
-            perpignan.log(PlayerSheepleInfo(p))
+            log(PlayerSheepleInfo(p))
             if sheeples == most_sheeples:
                 p.score += score
-                perpignan.log(PlayerScoreInfo(p))
+                log(PlayerScoreInfo(p))
 
-        perpignan.log(CompletedInfo(self))
+        log(CompletedInfo(self))
 
-    def should_complete(self):
+    def should_complete(self) -> bool:
         return False
 
-    def symbol(self):
+    def symbol(self) -> str:
         raise NotImplementedError()
 
-    def name(self):
+    def name(self) -> str:
         return type(self).__name__
 
     def to_dict(self):
@@ -100,7 +113,7 @@ class Feature:
         }
 
 class Town(Feature):
-    def __init__(self, flags=0):
+    def __init__(self, flags: int = 0):
         super().__init__()
         self.flags = flags
 
@@ -118,8 +131,8 @@ class Town(Feature):
 
         return True
 
-    def absorb(self, other, perpignan):
-        super().absorb(other, perpignan)
+    def absorb(self, other, log=lambda msg: None):
+        super().absorb(other, log)
         if self is other:
             return
 
@@ -174,8 +187,8 @@ class Meadow(Feature):
                 towns[s.feature] = True
         return len(towns) * 3
 
-    def absorb(self, other, perpignan):
-        super().absorb(other, perpignan)
+    def absorb(self, other, log=lambda msg: None):
+        super().absorb(other, log=log)
         if self is other:
             return
 
@@ -201,7 +214,10 @@ class Mill(Feature):
 def pixels_equal(pix1, pix2):
     return pix1 == pix2
 
-def pixels_connected(image, pos_a, pos_b, compare=pixels_equal):
+def pixels_connected(image: Image,
+                     pos_a: (int, int),
+                     pos_b: (int, int),
+                     compare=pixels_equal) -> bool:
     # -1 unsearched, 0 not connected, 1 connected
     imwidth, imheight = image.size
     state = [[-1] * imwidth for _ in range(imheight)]
@@ -236,7 +252,6 @@ def pixels_connected(image, pos_a, pos_b, compare=pixels_equal):
 
     return depth_first(pos_a)
 
-
 class Tile:
     slot_offsets = {
         ( 0,  1): 0,
@@ -253,10 +268,10 @@ class Tile:
         self.y = -1
         self.neighbours = 0
 
-    def add_neighbours(self, nx, perpignan):
+    def add_neighbours(self, nx: int, log=lambda msg: None):
         self.neighbours += nx
         if self.neighbours == 8 and isinstance(self.slots[12].feature, Mill):
-            self.slots[12].feature.complete(perpignan)
+            self.slots[12].feature.complete(log=log)
 
     def rotate_cw(self):
         mill_slot = self.slots[12]
@@ -309,7 +324,7 @@ class Tile:
 
         return {'type': 'Tile', 'features': feats}
 
-    def print_line(self, line):
+    def print_line(self, line: int):
         which_slots = {
             0: [-1,       0,  1,      2, -1],
             1: [11, (11, 0),  1, (2, 3),  3],
@@ -343,7 +358,7 @@ class Tile:
             print()
 
     @staticmethod
-    def from_bitmap(image):
+    def from_bitmap(image: Image):
         tile = Tile()
 
         pixels = [
@@ -413,14 +428,16 @@ class Tile:
         return tile
 
     @staticmethod
-    def deck_from_bitmap(im, w=7, h=12, res=7):
+    def deck_from_bitmap(im: Image, res: int):
+        full_w, full_h = im.size
+        w, h = full_w // res, full_h // res
         return [
             Tile.from_bitmap(im.crop((x * res, y * res, (x + 1) * res, (y + 1) * res)))
             for y in range(h) for x in range(w)
         ]
 
 class CantPlaceThatThereError(Exception):
-    def __init__(self, reason):
+    def __init__(self, reason: str):
         super().__init__(reason)
         self.reason = reason
 
@@ -463,7 +480,7 @@ class StateChangeInfo:
         raise NotImplementedError()
 
 class NextTurnInfo(StateChangeInfo):
-    def __init__(self, player):
+    def __init__(self, player: Player):
         self.player = player
 
     def to_dict(self):
@@ -473,7 +490,7 @@ class NextTurnInfo(StateChangeInfo):
         }
 
 class PlayerScoreInfo(StateChangeInfo):
-    def __init__(self, player):
+    def __init__(self, player: Player):
         self.player = player
 
     def to_dict(self):
@@ -484,7 +501,7 @@ class PlayerScoreInfo(StateChangeInfo):
         }
 
 class PlayerSheepleInfo(StateChangeInfo):
-    def __init__(self, player):
+    def __init__(self, player: Player):
         self.player = player
 
     def to_dict(self):
@@ -495,7 +512,7 @@ class PlayerSheepleInfo(StateChangeInfo):
         }
 
 class PlayerQuitInfo(StateChangeInfo):
-    def __init__(self, player):
+    def __init__(self, player: Player):
         self.player = player
 
     def to_dict(self):
@@ -505,7 +522,7 @@ class PlayerQuitInfo(StateChangeInfo):
         }
 
 class TilePlaceInfo(StateChangeInfo):
-    def __init__(self, tile, sheeples: int, sheeple_slot: int):
+    def __init__(self, tile: Tile, sheeples: int, sheeple_slot: int):
         self.tile = tile
         self.sheeples = sheeples
         self.sheeple_slot = sheeple_slot
@@ -523,7 +540,7 @@ class TilePlaceInfo(StateChangeInfo):
         return d
 
 class CompletedInfo(StateChangeInfo):
-    def __init__(self, feature):
+    def __init__(self, feature: Feature):
         self.feature = feature
 
     def to_dict(self):
@@ -533,7 +550,7 @@ class CompletedInfo(StateChangeInfo):
         }
 
 class UserErrorInfo(StateChangeInfo):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         self.msg = msg
 
     def to_dict(self):
@@ -558,7 +575,7 @@ class CanPlaceInfo(ResponseInfo):
         }
 
 class NextTileInfo(ResponseInfo):
-    def __init__(self, tile, deck_size: int):
+    def __init__(self, tile: Tile, deck_size: int):
         self.tile = tile
         self.deck_size = deck_size
 
@@ -569,96 +586,48 @@ class NextTileInfo(ResponseInfo):
             'deck_size': self.deck_size
         }
 
-class Perpignan:
-    def __init__(self):
+class PerpignanBoard:
+    def __init__(self, start_tile: Tile = None, log=lambda msg: None):
         self.grid = [[None for y in range(7 * 12)] for x in range(7 * 12)]
+        if start_tile is not None:
+            self.grid[42][42] = start_tile
+            start_tile.x = 42
+            start_tile.y = 42
+            self.available = {(43, 42): True, (42, 43): True, (41, 42): True, (42, 41): True}
+        else:
+            self.available = {}
 
-        bmp_path = os.path.join(os.path.dirname(__file__), 'tiles.png')
-        deck = Tile.deck_from_bitmap(Image.open(bmp_path))
-        deck1 = deck[:14]
-        deck2 = deck[15:]
-        start_tile = deck[14]
-        self.grid[42][42] = start_tile
-        start_tile.x = 42
-        start_tile.y = 42
-        deck = deck1 + deck2
-        random.shuffle(deck)
-        self.deck = deck
+        self.log = log
 
-        self.available = {(43, 42): True, (42, 43): True, (41, 42): True, (42, 41): True}
-        self.cursor = (43, 42)
-        self.players = []
-        self.active_player = None
-        self.active_player_idx = -1
-
-    def run(self):
-        if len(self.players) == 0:
-            return
-
-        self.log(TilePlaceInfo(self.grid[42][42], 0, 0))
-
-        self.next_player()
-        while len(self.deck) > 0:
-            self.log(NextTurnInfo(self.active_player))
-
-            act = self.active_player.poll_action()
-            try:
-                self.handle_action(act)
-            except Exception as e:
-                print(e)
-
-        self.end_game()
-
-    def handle_action(self, act):
-        if type(act) == SetCursorAction:
-            self.cursor = (act.x, act.y)
-
-        elif type(act) == RotateAction:
-            tile = self.deck[-1]
-            rotation = tile.rotate_cw if act.turns > 0 else tile.rotate_ccw
-            for _ in range(abs(act.turns)):
-                rotation()
-
-        elif type(act) == PlaceAction:
-            self.place(act.sheeples, act.sheeple_slot)
-
-        elif type(act) == RequestNextTileAction:
-            self.active_player.inform(NextTileInfo(self.deck[-1], len(self.deck)))
-
-        elif type(act) == CanPlaceAction:
-            can, ynot = self.can_place_and_ynot(sheeples=act.sheeples, sheeple_slot=act.sheeple_slot)
-            self.active_player.inform(CanPlaceInfo(can, ynot))
-
-        elif type(act) == PlayerQuitAction:
-            del self.players[self.active_player_idx]
-
-    def next_player(self):
-        self.active_player_idx = (self.active_player_idx + 1) % len(self.players)
-        self.active_player = self.players[self.active_player_idx]
-
-    def log(self, msg):
-        for p in self.players:
-            p.inform(msg)
-
-    def inbounds(self, x, y):
+    def inbounds(self, x: int, y: int):
         return x >= 0 and x < len(self.grid) and y >= 0 and y < len(self.grid)
 
-    def can_place(self, sheeples=0, sheeple_slot=0) -> bool:
-        can, ynot = self.can_place_and_ynot(sheeples, sheeple_slot)
+    def can_place(self,
+                  player: Player, tile: Tile, coord: (int, int),
+                  sheeples: int = 0, sheeple_slot: int = 0) -> bool:
+        can, ynot = self.can_place_and_ynot(player, tile, coord, sheeples, sheeple_slot)
         return can
 
-    def can_place_and_ynot(self, sheeples=0, sheeple_slot=0) -> (bool, str):
+    def can_place_and_ynot(self,
+                           player: Player, tile: Tile, coord: (int, int),
+                           sheeples: int = 0, sheeple_slot: int = 0) -> (bool, str):
         try:
-            self.place(sheeples, sheeple_slot, commit=False)
+            self.place(player, tile, coord, sheeples, sheeple_slot, commit=False)
         except CantPlaceThatThereError as e:
             return False, e.reason
         return True, None
 
-    def place(self, sheeples=0, sheeple_slot=0, commit=True):
+    def place(self,
+              player: Player, tile: Tile, coord: (int, int),
+              sheeples: int = 0, sheeple_slot: int = 0,
+              commit=True):
         """
         Let the current player place the current tile on the board at
         the cursor position.
 
+        :param Player player: The player performing the placement.
+        :param Tile tile: Tile being placed.
+        :param tuple coord: Placement location.
         :param int sheeples: How many sheeples to place.
         :param int sheeple_slot: At which slot to place a sheeple.
         :param bool commit: Whether to actually perform the placement,
@@ -667,11 +636,11 @@ class Perpignan:
                             or sheeples is not in the range 0,2-3.
         :raises CantPlaceThatThereError: if placement violates the rules.
         """
-        if len(self.deck) == 0:
-            raise CantPlaceThatThereError('no tiles')
 
-        tile = self.deck[-1]
-        x, y = self.cursor
+        if tile is None:
+            raise ValueError('tile is None')
+
+        x, y = coord
 
         if not self.inbounds(x, y):
             raise CantPlaceThatThereError('out of bounds')
@@ -680,19 +649,22 @@ class Perpignan:
             raise CantPlaceThatThereError('occupied')
 
         if sheeples != 0:
-            if sheeple_slot < 0 or sheeple_slot > 12:
+            if player is None:
+                raise ValueError('player is None')
+            if sheeple_slot not in range(0, 13):
                 raise ValueError('invalid slot')
             if sheeples not in (2, 3):
                 raise ValueError('invalid number of sheeples')
+
             if tile.slots[sheeple_slot].feature is None:
                 raise CantPlaceThatThereError(f'sheeple on river at {sheeple_slot}')
             if sheeple_slot == 12 and not isinstance(tile.slots[12].feature, Mill):
                 raise CantPlaceThatThereError('tile has no mill')
-            if self.active_player.sheeples < sheeples:
+            if player.sheeples < sheeples:
                 raise CantPlaceThatThereError('not enough sheeples')
-            if sheeples == 3 and (self.active_player.sheeples % 2) != 1:
+            if sheeples == 3 and (player.sheeples % 2) != 1:
                 raise CantPlaceThatThereError('abbot already in use')
-            if sheeples == 2 and self.active_player.sheeples == 3:
+            if sheeples == 2 and player.sheeples == 3:
                 raise CantPlaceThatThereError('only abbot left')
 
         # to be populated with tuples (N, (dx, dy), L) where
@@ -765,11 +737,9 @@ class Perpignan:
             self.available[coord] = True
 
         if sheeples > 0:
-            tile.slots[sheeple_slot].feature.player_sheeples[self.active_player] = sheeples
-            self.active_player.sheeples -= sheeples
-            self.log(PlayerSheepleInfo(self.active_player))
-
-        self.log(TilePlaceInfo(tile, sheeples, sheeple_slot))
+            tile.slots[sheeple_slot].feature.player_sheeples[player] = sheeples
+            player.sheeples -= sheeples
+            self.log(PlayerSheepleInfo(player))
 
         # mark connected edge slots as unavailable
         for tile_b, (dx, dy) in nxbours:
@@ -789,7 +759,7 @@ class Perpignan:
                 feat = tile.slots[offset + i].feature
                 feat_b = tile_b.slots[offset_b + 2 - i].feature
                 if feat_b is not None:
-                    feat_b.absorb(feat, self)
+                    feat_b.absorb(feat, log=self.log)
 
         # update to complete any neighbouring mills
         all_neighbours = [
@@ -801,51 +771,29 @@ class Perpignan:
             and self.grid[x + i][y + j] is not None
         ]
 
-        tile.add_neighbours(len(all_neighbours), self)
+        tile.add_neighbours(len(all_neighbours), log=self.log)
         for nx in all_neighbours:
-            nx.add_neighbours(1, self)
+            nx.add_neighbours(1, log=self.log)
 
-        # we're done with this tile, and current player's turn has ended
-        self.deck.pop()
-        self.next_player()
+        self.log(TilePlaceInfo(tile, sheeples, sheeple_slot))
 
-        # see if the new tile fits anywhere; draw a new one if not
-        nofit = []
-        while len(self.deck) > 0 and not self.new_tile_fits_anywhere():
-            nofit.append(self.deck.pop())
-
-        # if nothing fits (i.e. len(self.deck) == 0), then we leave the
-        # deck empty to terminate the game
-        if len(self.deck) > 0 and len(nofit) > 0:
-            tile_that_fits = self.deck.pop()
-            deck = self.deck + nofit
-            random.shuffle(deck)
-            deck.append(tile_that_fits)
-            self.deck = deck
-
-    def new_tile_fits_anywhere(self):
-        if len(self.deck) == 0:
+    def tile_fits_anywhere(self, tile: Tile) -> bool:
+        if tile is None:
             return False
 
-        cur = self.cursor
-        try:
-            new_tile = self.deck[-1]
-            for (x, y) in self.available:
-                self.cursor = (x, y)
-                fits = False
-                for _ in range(4):
-                    new_tile.rotate_cw()
-                    # we don't return just yet even if it fits; let's
-                    # restore the tile's original orientation first
-                    fits = fits or self.can_place()
-                if fits:
-                    return True
+        for coord in self.available:
+            fits = False
+            for _ in range(4):
+                tile.rotate_cw()
+                # we don't return just yet even if it fits; let's
+                # restore the tile's original orientation first
+                fits = fits or self.can_place(None, tile, coord)
+            if fits:
+                return True
 
-            return False
-        finally:
-            self.cursor = cur
+        return False
 
-    def end_game(self):
+    def score(self):
         features = (
             s.feature
             for tiles in self.grid
@@ -862,14 +810,108 @@ class Perpignan:
         for feat in unique_features:
             feat.complete(self, endgame=True)
 
-class Player:
-    def __init__(self, name):
-        self.score = 0
-        self.sheeples = 19
-        self.name = name
+class PerpignanGame:
+    def __init__(self):
+        bmp_path = os.path.join(os.path.dirname(__file__), 'tiles.png')
+        deck = Tile.deck_from_bitmap(Image.open(bmp_path), 7)
+        deck1 = deck[:14]
+        deck2 = deck[15:]
+        start_tile = deck[14]
+        deck = deck1 + deck2
+        random.shuffle(deck)
+        self.deck = deck
 
-    def poll_action(self):
-        raise NotImplementedError()
+        self.board = PerpignanBoard(start_tile=start_tile, log=self.log)
 
-    def inform(self, msg):
-        raise NotImplementedError()
+        self.cursor = (43, 42)
+        self.players = []
+        self.active_player = None
+        self.active_player_idx = -1
+
+    def can_place(self, sheeples: int = 0, sheeple_slot: int = 0) -> bool:
+        can, ynot = self.can_place_and_ynot(sheeples, sheeple_slot)
+        return can
+
+    def can_place_and_ynot(self, sheeples: int = 0, sheeple_slot: int = 0) -> (bool, str):
+        try:
+            self.place(sheeples, sheeple_slot, commit=False)
+        except CantPlaceThatThereError as e:
+            return False, e.reason
+        return True, None
+
+    def place(self, sheeples: int = 0, sheeple_slot: int = 0, commit=True):
+        self.board.place(self.active_player,
+                         self.deck[-1],
+                         self.cursor,
+                         sheeples,
+                         sheeple_slot,
+                         commit=commit)
+
+        if commit:
+            # we're done with this tile, and current player's turn has ended
+            self.deck.pop()
+            self.next_player()
+
+            # see if the new tile fits anywhere; draw a new one if not
+            nofit = []
+            while len(self.deck) > 0 and not self.board.tile_fits_anywhere(self.deck[-1]):
+                nofit.append(self.deck.pop())
+
+            # if nothing fits (i.e. len(self.deck) == 0), then we leave the
+            # deck empty to terminate the game
+            if len(self.deck) > 0 and len(nofit) > 0:
+                tile_that_fits = self.deck.pop()
+                deck = self.deck + nofit
+                random.shuffle(deck)
+                deck.append(tile_that_fits)
+                self.deck = deck
+
+    def run(self):
+        if len(self.players) == 0:
+            return
+
+        self.log(TilePlaceInfo(self.board.grid[42][42], 0, 0))
+
+        self.next_player()
+        while len(self.deck) > 0:
+            self.log(NextTurnInfo(self.active_player))
+
+            act = self.active_player.poll_action()
+            try:
+                self.handle_action(act)
+            except Exception as e:
+                print(e)
+
+        self.board.score()
+
+    def handle_action(self, act: PlayerAction):
+        if type(act) == SetCursorAction:
+            self.cursor = (act.x, act.y)
+
+        elif type(act) == RotateAction:
+            tile = self.deck[-1]
+            rotation = tile.rotate_cw if act.turns > 0 else tile.rotate_ccw
+            for _ in range(abs(act.turns)):
+                rotation()
+
+        elif type(act) == PlaceAction:
+            self.place(act.sheeples, act.sheeple_slot)
+
+        elif type(act) == RequestNextTileAction:
+            self.active_player.inform(NextTileInfo(self.deck[-1], len(self.deck)))
+
+        elif type(act) == CanPlaceAction:
+            can, ynot = self.can_place_and_ynot(sheeples=act.sheeples, sheeple_slot=act.sheeple_slot)
+            self.active_player.inform(CanPlaceInfo(can, ynot))
+
+        elif type(act) == PlayerQuitAction:
+            del self.players[self.active_player_idx]
+
+    def next_player(self):
+        self.active_player_idx = (self.active_player_idx + 1) % len(self.players)
+        self.active_player = self.players[self.active_player_idx]
+
+    def log(self, msg: StateChangeInfo):
+        for p in self.players:
+            p.inform(msg)
+
